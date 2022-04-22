@@ -2,6 +2,8 @@ package hello.jdbc.domain;
 
 import lombok.Data;
 
+import java.util.Objects;
+
 @Data
 public class Member {
 
@@ -15,4 +17,5 @@ public class Member {
         this.memberId = memberId;
         this.money = money;
     }
+
 }
