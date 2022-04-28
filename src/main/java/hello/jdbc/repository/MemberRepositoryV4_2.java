@@ -1,29 +1,33 @@
 package hello.jdbc.repository;
 
 import hello.jdbc.domain.Member;
+import hello.jdbc.repository.ex.MyDbException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.jdbc.support.JdbcUtils;
+import org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator;
+import org.springframework.jdbc.support.SQLExceptionTranslator;
 
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.NoSuchElementException;
 
 /**
- * 트랜잭션 - 트랜잭션 매니저
- * DataSourceUtils.getConnection()
- * DataSourceUtils.releaseConnection()
+ * SQLExceptionTranslator 추
  */
 @Slf4j
-public class MemberRepositoryV3 {
+public class MemberRepositoryV4_2 implements MemberRepository{
 
     private final DataSource dataSource;
+    private final SQLExceptionTranslator exTranslator;
 
-    public MemberRepositoryV3(DataSource dataSource) {
+    public MemberRepositoryV4_2(DataSource dataSource) {
         this.dataSource = dataSource;
+        this.exTranslator = new SQLErrorCodeSQLExceptionTranslator(dataSource);
     }
 
-    public Member save(Member member) throws SQLException {
+    @Override
+    public Member save(Member member) {
         String sql = "insert into member(member_id, money) values (?,?)"; //sql 인젝션 방지 파라미터 바인딩 ?,? PreparedStatement 로
 
         Connection con = null;
@@ -37,8 +41,7 @@ public class MemberRepositoryV3 {
             pstmt.executeUpdate();
             return member;
         } catch (SQLException e) {
-            log.error("db error", e);
-            throw e;
+            throw exTranslator.translate("save", sql, e);
         } finally {
             // 닫아줘야됌 무조건
             close(con, pstmt, null); //ex 영향을 안받게 분리
@@ -46,7 +49,8 @@ public class MemberRepositoryV3 {
         }
     }
 
-    public Member findById(String memberId) throws SQLException {
+    @Override
+    public Member findById(String memberId) {
         String sql = "select * from member where member_id = ?";
         Connection con = null;
         PreparedStatement pstmt = null;
@@ -68,17 +72,15 @@ public class MemberRepositoryV3 {
             } else {
                 throw new NoSuchElementException("member not found memberId = " + memberId);
             }
-
-
         } catch (SQLException e) {
-            log.info("error", e);
-            throw e;
+            throw exTranslator.translate("findById", sql, e);
         }finally {
             close(con, pstmt, rs);
         }
     }
 
-    public void update(String memberId, int money) throws SQLException {
+    @Override
+    public void update(String memberId, int money) {
         String sql = "update member set money=? where member_id =?";
 
         Connection con = null;
@@ -92,15 +94,15 @@ public class MemberRepositoryV3 {
             int resultSize = pstmt.executeUpdate();
             log.info("resultSize {}", resultSize);
         } catch (SQLException e) {
-            log.info("error", e);
-            throw e;
+            throw exTranslator.translate("update", sql, e);
         } finally {
             close(con, pstmt, null);
         }
 
     }
 
-    public void delete(String memberId) throws SQLException {
+    @Override
+    public void delete(String memberId) {
         String sql = "delete from member where member_id = ?";
         Connection con = null;
         PreparedStatement pstmt = null;
@@ -113,8 +115,7 @@ public class MemberRepositoryV3 {
             log.info("resultSize {}", resultSize);
 
         } catch (SQLException e) {
-            log.info("error", e);
-            throw e;
+            throw exTranslator.translate("delete", sql, e);
         } finally {
             close(con, pstmt, null);
         }
@@ -130,7 +131,7 @@ public class MemberRepositoryV3 {
 
     }
 
-    private Connection getConnection() throws SQLException {
+    private Connection getConnection() {
         //주의 트랜잭션 동기화를 사용하려면 DataSourceUtils를 사용해야한다
         Connection con = DataSourceUtils.getConnection(dataSource);
         log.info("get connection={}, class={}", con, con.getClass());

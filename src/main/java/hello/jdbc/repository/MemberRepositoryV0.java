@@ -31,7 +31,7 @@ public class MemberRepositoryV0 {
             throw e;
         } finally {
             // 닫아줘야됌 무조건
-            close(con, pstmt, null); //exception 영향을 안받게 분리
+            close(con, pstmt, null); //ex 영향을 안받게 분리
 
         }
     }
